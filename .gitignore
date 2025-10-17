@@ -64,3 +64,8 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Documentation (except READMEs)
+*.md
+!README.md
+!**/README.md
