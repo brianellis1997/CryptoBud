@@ -68,6 +68,106 @@ def create_live_chart(df, coin_symbol):
 
     return fig
 
+def create_multi_coin_chart(coins_data, timeframe):
+    fig = go.Figure()
+
+    colors = {
+        'bitcoin': '#F7931A',
+        'ethereum': '#627EEA',
+        'ripple': '#23292F',
+        'cardano': '#0033AD',
+        'solana': '#14F195'
+    }
+
+    for coin_id, data in coins_data.items():
+        if not data.empty:
+            coin_symbol = data['symbol'].iloc[0] if 'symbol' in data.columns else coin_id.upper()
+
+            fig.add_trace(
+                go.Scatter(
+                    x=data['timestamp'],
+                    y=data['price'],
+                    name=coin_symbol,
+                    line=dict(
+                        color=colors.get(coin_id, '#888888'),
+                        width=2
+                    ),
+                    mode='lines',
+                    hovertemplate='%{y:$,.2f}<extra></extra>'
+                )
+            )
+
+    fig.update_layout(
+        title=f'All Cryptocurrencies - {timeframe} Day Comparison',
+        xaxis_title="Time",
+        yaxis_title="Price (USD)",
+        height=600,
+        hovermode='x unified',
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        margin=dict(l=0, r=0, t=60, b=0)
+    )
+
+    return fig
+
+def create_normalized_multi_coin_chart(coins_data, timeframe):
+    fig = go.Figure()
+
+    colors = {
+        'bitcoin': '#F7931A',
+        'ethereum': '#627EEA',
+        'ripple': '#23292F',
+        'cardano': '#0033AD',
+        'solana': '#14F195'
+    }
+
+    for coin_id, data in coins_data.items():
+        if not data.empty:
+            coin_symbol = data['symbol'].iloc[0] if 'symbol' in data.columns else coin_id.upper()
+
+            first_price = data['price'].iloc[0]
+            normalized_prices = ((data['price'] / first_price) - 1) * 100
+
+            fig.add_trace(
+                go.Scatter(
+                    x=data['timestamp'],
+                    y=normalized_prices,
+                    name=coin_symbol,
+                    line=dict(
+                        color=colors.get(coin_id, '#888888'),
+                        width=2
+                    ),
+                    mode='lines',
+                    hovertemplate='%{y:+.2f}%<extra></extra>'
+                )
+            )
+
+    fig.update_layout(
+        title=f'All Cryptocurrencies - Normalized Performance ({timeframe}d)',
+        xaxis_title="Time",
+        yaxis_title="Change from Start (%)",
+        height=600,
+        hovermode='x unified',
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        margin=dict(l=0, r=0, t=60, b=0),
+        yaxis=dict(zeroline=True, zerolinewidth=2, zerolinecolor='gray')
+    )
+
+    return fig
+
 def main():
     st.title("📈 CryptoBud - Real-Time Demo")
     st.markdown("### Live cryptocurrency prices via CoinGecko API")
@@ -93,6 +193,14 @@ def main():
         options=[1, 3, 7],
         format_func=lambda x: f"{x} day{'s' if x > 1 else ''}",
         index=0
+    )
+
+    chart_mode = st.sidebar.radio(
+        "Chart Mode",
+        options=["Single Coin", "All Coins", "Normalized Comparison"],
+        help="Single Coin: Show one coin at a time\n"
+             "All Coins: Show all coins on same chart\n"
+             "Normalized: Compare % change from start"
     )
 
     auto_refresh = st.sidebar.checkbox("Auto Refresh (30s)", value=False)
@@ -141,11 +249,34 @@ def main():
 
             st.markdown("---")
 
-            historical_df = fetch_historical_prices(selected_coin, days=timeframe)
+            if chart_mode == "Single Coin":
+                historical_df = fetch_historical_prices(selected_coin, days=timeframe)
 
-            if not historical_df.empty:
-                chart = create_live_chart(historical_df, coin_data['symbol'])
-                st.plotly_chart(chart, use_container_width=True)
+                if not historical_df.empty:
+                    chart = create_live_chart(historical_df, coin_data['symbol'])
+                    st.plotly_chart(chart, use_container_width=True)
+
+            elif chart_mode in ["All Coins", "Normalized Comparison"]:
+                with st.spinner("Loading data for all coins..."):
+                    all_coins_data = {}
+
+                    for coin_id in available_coins.keys():
+                        coin_df = fetch_historical_prices(coin_id, days=timeframe)
+                        if not coin_df.empty:
+                            all_coins_data[coin_id] = coin_df
+
+                    if all_coins_data:
+                        if chart_mode == "All Coins":
+                            chart = create_multi_coin_chart(all_coins_data, timeframe)
+                        else:
+                            chart = create_normalized_multi_coin_chart(all_coins_data, timeframe)
+
+                        st.plotly_chart(chart, use_container_width=True)
+
+                        st.info(
+                            "💡 **Tip**: Normalized view shows % change from the start, "
+                            "making it easier to compare performance across different price ranges."
+                        )
 
                 st.markdown("---")
                 st.subheader("📊 All Cryptocurrencies")
