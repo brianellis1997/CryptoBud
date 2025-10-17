@@ -43,13 +43,14 @@ Try the real-time dashboard immediately:
 
 ```bash
 conda activate cryptobud
-streamlit run dashboard/demo_app.py
+streamlit run dashboard/simple_demo.py
 ```
 
 **Features:**
-- Real-time prices updated every second
-- Live charts with price history
+- Real-time prices updated every 30 seconds (CoinGecko API)
+- Live charts with 1/3/7 day price history
 - No model training needed
+- Works worldwide (no geo-restrictions)
 - Perfect for testing and exploration
 
 ### Full Mode with AI Predictions
